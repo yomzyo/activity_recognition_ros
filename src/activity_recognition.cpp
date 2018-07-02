@@ -4,12 +4,10 @@
 using namespace activity_recognition;
 
 ActivityRecognition::ActivityRecognition()
-        :
-    it_(nh_)
 {    
-    op_sub_ = nh_.subscribe("openpose_ros/human_list", 1, &ActivityRecognition::poseRecieved, this);
-    image_sub_ = it_.subscribe("/camera/rgb/image_color", 1, &ActivityRecognition::imageRecieved, this);
-    depth_sub_ = it_.subscribe("/camera/depth/image_raw", 1, &ActivityRecognition::depthRecieved, this); 
+    //op_sub_ = nh_.subscribe("openpose_ros/human_list", 1, &ActivityRecognition::poseRecieved, this);
+
+    syncTopics();
 
     cv::namedWindow("Activity Recognition");
     cv::namedWindow("Activity Recognition2");    
@@ -44,7 +42,7 @@ void ActivityRecognition::recognizeActivity()
 }
 
 
-// Callback function for open pose data
+/* Callback function for open pose data
 void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanList::ConstPtr& msg)
 {
     /*
@@ -58,7 +56,7 @@ void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanLis
                     "Joint 0 y: " << first_human.body_key_points_with_prob[0].y << "\n"
                     "Joint 0 prob: " << first_human.body_key_points_with_prob[0].prob << "\n");
    */
-    
+    /*
     openpose_ros_msgs::OpenPoseHumanList human_list_msg = *msg;
     std::vector<openpose_ros_msgs::OpenPoseHuman> human_list = human_list_msg.human_list;
     openpose_ros_msgs::OpenPoseHuman first_human = human_list[0];
@@ -69,7 +67,8 @@ void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanLis
         human1.joints[i][2] = (first_human.body_key_points_with_prob[i].prob * 100);
     }
 }
-
+*/
+/*
 void ActivityRecognition::imageRecieved(const sensor_msgs::ImageConstPtr& msg)
 {
     try
@@ -99,12 +98,22 @@ void ActivityRecognition::depthRecieved(const sensor_msgs::ImageConstPtr& msg)
     
     human1.depth_image = (cv_depth_ptr_->image);
 }
+*/
+
+void ActivityRecognition::syncTopics()
+{
+    rgb_image_sub_.subscribe(nh_, "/camera/rgb/image_raw", 1 );
+    depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 1 );
+    open_pose_sub_.subscribe(nh_,"/openpose_ros/human_list",1);
+    sync = new message_filters::Synchronizer<MySyncPolicy>(MySyncPolicy( 100 ), rgb_image_sub_,  depth_image_sub_,open_pose_sub_);
+    sync->registerCallback( boost::bind( &ActivityRecognition::poseRecieved, this, _1, _2, _3 ) );
+}
 
 
-/*
-void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanList::ConstPtr& op_msg,
-                                        const sensor_msgs::ImageConstPtr& img_msg,
-                                        const sensor_msgs::ImageConstPtr& depth_msg)
+
+void ActivityRecognition::poseRecieved(const sensor_msgs::ImageConstPtr& img_msg,
+                                       const sensor_msgs::ImageConstPtr& depth_msg,
+                                       const openpose_ros_msgs::OpenPoseHumanList::ConstPtr& op_msg)
 {
     /*
     openpose_ros_msgs::OpenPoseHumanList human_list_msg = *msg;
@@ -117,6 +126,7 @@ void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanLis
                     "Joint 0 y: " << first_human.body_key_points_with_prob[0].y << "\n"
                     "Joint 0 prob: " << first_human.body_key_points_with_prob[0].prob << "\n");
    
+    */
     
     openpose_ros_msgs::OpenPoseHumanList human_list_msg = *op_msg;
     std::vector<openpose_ros_msgs::OpenPoseHuman> human_list = human_list_msg.human_list;
@@ -127,7 +137,7 @@ void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanLis
         human1.joints[i][1] = first_human.body_key_points_with_prob[i].y;
         human1.joints[i][2] = (first_human.body_key_points_with_prob[i].prob * 100);
     }
-
+    
     try
     {
         cv_img_ptr_ = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);
@@ -154,4 +164,3 @@ void ActivityRecognition::poseRecieved(const openpose_ros_msgs::OpenPoseHumanLis
     
     human1.depth_image = (cv_depth_ptr_->image);
 }
-*/
